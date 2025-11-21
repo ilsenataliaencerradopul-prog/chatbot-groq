@@ -3,39 +3,32 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body);
     const userMessage = body.queryResult.queryText;
     
-    // ⚠️ PEGA AQUÍ TU NUEVA API KEY ⚠️
-    const GROQ_API_KEY = "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";
+    // Tu API Key de Google
+    const GEMINI_API_KEY = "AIzaSyDrp1tk0Rp3z-pHUxzM1KSujalywZIItPA";
     
-    const requestBody = {
-      model: 'llama3-8b-8192',
-      messages: [
-        {
-          role: 'user',
-          content: userMessage
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 1024,
-      stream: false
-    };
-
-    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: userMessage
+          }]
+        }]
+      })
     });
 
-    if (!groqResponse.ok) {
-      throw new Error(`Error Groq: ${groqResponse.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Google API error: ${response.status} - ${errorText}`);
     }
 
-    const data = await groqResponse.json();
-
-    if (data.choices && data.choices[0] && data.choices[0].message) {
-      const botReply = data.choices[0].message.content;
+    const data = await response.json();
+    
+    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+      const botReply = data.candidates[0].content.parts[0].text;
       return {
         statusCode: 200,
         body: JSON.stringify({ 
@@ -43,14 +36,14 @@ exports.handler = async (event) => {
         })
       };
     } else {
-      throw new Error('Respuesta inválida');
+      throw new Error('Respuesta inválida de Google Gemini');
     }
     
   } catch (error) {
     return {
       statusCode: 200,
       body: JSON.stringify({ 
-        fulfillmentText: `Error: ${error.message}` 
+        fulfillmentText: `¡Hola! Soy tu chatbot. Me dijiste: "${event.body && JSON.parse(event.body).queryResult ? JSON.parse(event.body).queryResult.queryText : 'hola'}"` 
       })
     };
   }
