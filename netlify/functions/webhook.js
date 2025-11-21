@@ -4,18 +4,53 @@ exports.handler = async (event) => {
     const userMessage = body.queryResult.queryText;
     
     const GEMINI_API_KEY = "AIzaSyDrp1tk0Rp3z-pHUxzM1KSujalywZIItPA";
+
+    // CONEXIÓN A BASE DE DATOS PROFREEHOST
+    let dbData = null;
     
-    // Solo usar Gemini para mensajes más complejos
-    if (userMessage.toLowerCase() === 'hola') {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ 
-          fulfillmentText: "¡Hola! 😊 Soy tu asistente con IA. ¿En qué puedo ayudarte hoy?" 
-        })
-      };
+    // Consultar la base de datos según el mensaje
+    if (userMessage.toLowerCase().includes('usuario') || userMessage.toLowerCase().includes('base de datos')) {
+      try {
+        // Aquí va tu conexión MySQL a ProFreeHost
+        // Ejemplo con datos simulados:
+        dbData = {
+          total_usuarios: 15,
+          usuarios_activos: 12,
+          ultimo_registro: "2024-01-15"
+        };
+        
+        // En producción, reemplaza con:
+        /*
+        const mysql = require('mysql2/promise');
+        const connection = await mysql.createConnection({
+          host: 'sql107.ezyro.com',
+          user: 'ezyro_39974526',
+          password: '0d398958b',
+          database: 'ezyro_39974526_usuarios'
+        });
+        
+        const [rows] = await connection.execute('SELECT COUNT(*) as total FROM usuarios');
+        dbData = { total_usuarios: rows[0].total };
+        await connection.end();
+        */
+        
+      } catch (dbError) {
+        console.log("Error DB:", dbError.message);
+        dbData = { error: "Error conectando a la base de datos" };
+      }
     }
+
+    // USAR GEMINI CON LOS DATOS DE LA DB
+    let prompt = userMessage;
     
-    // Para otros mensajes, intentar con Gemini
+    if (dbData) {
+      prompt = `El usuario preguntó: "${userMessage}". 
+      
+      Datos de la base de datos: ${JSON.stringify(dbData)}
+      
+      Responde usando esta información de manera natural:`;
+    }
+
     const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
@@ -24,7 +59,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `Responde como un asistente útil: ${userMessage}`
+            text: prompt
           }]
         }]
       })
@@ -41,11 +76,13 @@ exports.handler = async (event) => {
       }
     }
 
-    // Si Gemini falla, respuesta por defecto
+    // Respuesta por defecto
     return {
       statusCode: 200,
       body: JSON.stringify({ 
-        fulfillmentText: `Entendí que dijiste: "${userMessage}". ¿En qué más puedo ayudarte?` 
+        fulfillmentText: dbData ? 
+          `Base de datos: ${JSON.stringify(dbData)}. Mensaje: ${userMessage}` :
+          `Recibí: "${userMessage}". ¿Necesitas información de la base de datos?`
       })
     };
     
@@ -53,7 +90,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       body: JSON.stringify({ 
-        fulfillmentText: `¡Hola! Recibí tu mensaje: "${event.body && JSON.parse(event.body).queryResult ? JSON.parse(event.body).queryResult.queryText : 'hola'}"` 
+        fulfillmentText: `Error: ${error.message}` 
       })
     };
   }
