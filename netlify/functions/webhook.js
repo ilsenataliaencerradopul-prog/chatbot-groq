@@ -1,8 +1,10 @@
 exports.handler = async (event) => {
-  const body = JSON.parse(event.body);
-  const userMessage = body.queryResult.queryText;
-  
   try {
+    const body = JSON.parse(event.body);
+    const userMessage = body.queryResult.queryText;
+    
+    console.log("Mensaje recibido:", userMessage);
+
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -15,19 +17,31 @@ exports.handler = async (event) => {
         temperature: 0.7
       })
     });
-    
+
     const data = await groqResponse.json();
+    console.log("Respuesta de Groq:", data);
+
+    // Verificar que la respuesta tiene la estructura esperada
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error('Respuesta inválida de Groq API');
+    }
+
     const botReply = data.choices[0].message.content;
     
     return {
       statusCode: 200,
-      body: JSON.stringify({ fulfillmentText: botReply })
+      body: JSON.stringify({ 
+        fulfillmentText: botReply 
+      })
     };
     
   } catch (error) {
+    console.error("Error completo:", error);
     return {
       statusCode: 200,
-      body: JSON.stringify({ fulfillmentText: "Error: " + error.message })
+      body: JSON.stringify({ 
+        fulfillmentText: `Lo siento, hubo un error: ${error.message}` 
+      })
     };
   }
 };
