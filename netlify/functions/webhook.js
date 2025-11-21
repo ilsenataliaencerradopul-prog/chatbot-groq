@@ -3,32 +3,29 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body);
     const userMessage = body.queryResult.queryText;
     
-    console.log("Mensaje recibido:", userMessage);
-
+    // ⚠️ REEMPLAZA ESTA API KEY CON TU KEY VÁLIDA ⚠️
+    const GROQ_API_KEY = "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";
+    
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer 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',
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama3-8b-8192',  // ← MODELO ALTERNATIVO
+        model: 'llama3-8b-8192',
         messages: [{role: 'user', content: userMessage}],
         temperature: 0.7,
         max_tokens: 1024
       })
     });
 
-    // Verificar si la respuesta HTTP es exitosa
     if (!groqResponse.ok) {
-      const errorText = await groqResponse.text();
-      throw new Error(`Groq API error: ${groqResponse.status} - ${errorText}`);
+      throw new Error(`Error Groq API: ${groqResponse.status}`);
     }
 
     const data = await groqResponse.json();
-    console.log("Respuesta de Groq:", JSON.stringify(data, null, 2));
-
-    // Verificar estructura de respuesta
+    
     if (data.choices && data.choices[0] && data.choices[0].message) {
       const botReply = data.choices[0].message.content;
       return {
@@ -36,15 +33,14 @@ exports.handler = async (event) => {
         body: JSON.stringify({ fulfillmentText: botReply })
       };
     } else {
-      throw new Error('Estructura de respuesta inválida: ' + JSON.stringify(data));
+      throw new Error('Respuesta inválida de Groq');
     }
     
   } catch (error) {
-    console.error("Error completo:", error);
     return {
       statusCode: 200,
       body: JSON.stringify({ 
-        fulfillmentText: `Error: ${error.message}. Por favor intenta más tarde.` 
+        fulfillmentText: `Error: ${error.message}` 
       })
     };
   }
