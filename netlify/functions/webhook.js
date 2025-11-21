@@ -4,7 +4,7 @@ exports.handler = async (event) => {
     const userMessage = body.queryResult.queryText;
     
     // ⚠️ REEMPLAZA ESTA API KEY CON TU KEY VÁLIDA ⚠️
-    const GROQ_API_KEY = "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";
+    const GROQ_API_KEY = "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";
     
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
