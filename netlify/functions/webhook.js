@@ -1,15 +1,15 @@
+// netlify/functions/webhook.js
 exports.handler = async (event) => {
-    console.log("✅ Webhook ejecutándose");
+    console.log("🔔 Webhook llamado");
     
-    // RESPUESTA FIJA PARA PROBAR
     return {
         statusCode: 200,
         body: JSON.stringify({
-            fulfillmentText: "✅ Webhook funcionando - Hay 9 usuarios en el sistema",
+            fulfillmentText: "✅ CHATBOT FUNCIONANDO - 9 usuarios registrados en sistema",
             fulfillmentMessages: [
                 {
                     text: {
-                        text: ["✅ Webhook funcionando - Hay 9 usuarios en el sistema"]
+                        text: ["✅ CHATBOT FUNCIONANDO - 9 usuarios registrados en sistema"]
                     }
                 }
             ]
