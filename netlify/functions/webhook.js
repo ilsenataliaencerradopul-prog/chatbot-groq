@@ -2,9 +2,9 @@ const mysql = require('mysql2/promise');
 
 exports.handler = async (event) => {
     const dbConfig = {
-        host: "sql107.byetcluster.com",
+        host: "sql107.ezyro.com	",
         user: "ezyro_39974526", 
-        password: "tu_password_real", // PON AQUÍ TU PASSWORD
+        password: "0d398958b", // PON AQUÍ TU PASSWORD
         database: "ezyro_39974526_usuarios",
         ssl: { rejectUnauthorized: false }
     };
