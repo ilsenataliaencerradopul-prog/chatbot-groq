@@ -2,17 +2,22 @@ const mysql = require('mysql2/promise');
 
 exports.handler = async (event) => {
     const dbConfig = {
-        host: "sql107.ezyro.com	",
+        host: "sql107.ezyro.com",
         user: "ezyro_39974526", 
-        password: "0d398958b", // PON AQUÍ TU PASSWORD
+        password: "0d398958b", // PON AQUÍ TU PASSWORD DE VPanel
         database: "ezyro_39974526_usuarios",
+        port: 3306,
         ssl: { rejectUnauthorized: false }
     };
 
     try {
+        console.log("🔌 Conectando a la base de datos...");
         const connection = await mysql.createConnection(dbConfig);
+        console.log("✅ Conexión exitosa!");
+        
         const request = JSON.parse(event.body);
         const intent = request.queryResult.intent.displayName;
+        console.log("🎯 Intención:", intent);
         
         let responseText = "";
         
@@ -20,15 +25,21 @@ exports.handler = async (event) => {
             const [usuarios] = await connection.execute(
                 'SELECT id, nombre, email, estado FROM usuarios ORDER BY id DESC'
             );
+            console.log("📊 Usuarios encontrados:", usuarios.length);
             
             responseText = "👥 **USUARIOS REGISTRADOS:**\n\n";
             usuarios.forEach(user => {
                 const estado = user.estado === 'Activo' ? '✅' : '❌';
                 responseText += `${estado} ${user.nombre}\n📧 ${user.email}\n🆔 ID: ${user.id}\n\n`;
             });
+            
+            if (usuarios.length === 0) {
+                responseText = "❌ No hay usuarios registrados";
+            }
         }
         
         await connection.end();
+        console.log("✅ Respuesta enviada");
         
         return {
             statusCode: 200,
@@ -38,10 +49,11 @@ exports.handler = async (event) => {
         };
         
     } catch (error) {
+        console.error("❌ Error:", error.message);
         return {
             statusCode: 200,
             body: JSON.stringify({
-                fulfillmentText: "❌ Error: " + error.message
+                fulfillmentText: "❌ Error de conexión: " + error.message
             })
         };
     }
