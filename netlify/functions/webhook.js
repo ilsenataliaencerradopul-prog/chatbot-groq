@@ -2,29 +2,27 @@
 const mysql = require('mysql2/promise');
 
 exports.handler = async (event) => {
-    // 1. CONFIGURACIÓN DE TU BASE DE DATOS REAL
+    // TUS CREDENCIALES REALES - DIRECTAMENTE
     const dbConfig = {
-        host: "sql107.byetcluster.com",
-        user: "ezyro_39974526", // TU USUARIO
-        password: "tu_password_real", // TU PASSWORD
+        host: "sql107.ezyro.com	",
+        user: "ezyro_39974526",
+        password: "0d398958b", // PON TU PASSWORD REAL
         database: "ezyro_39974526_usuarios",
         ssl: {
             rejectUnauthorized: false
         }
     };
 
-    // 2. PROCESAR REQUEST DE DIALOGFLOW
-    const request = JSON.parse(event.body);
-    const intent = request.queryResult.intent.displayName;
-    const parameters = request.queryResult.parameters;
+    // TU API KEY SI LA NECESITAS
+    const API_KEY = "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";
 
     try {
-        // 3. CONECTAR A TU DB
         const connection = await mysql.createConnection(dbConfig);
+        const request = JSON.parse(event.body);
+        const intent = request.queryResult.intent.displayName;
         
         let responseText = "";
         
-        // 4. PROCESAR INTENCIONES
         switch(intent) {
             case 'consultar_usuarios':
                 const [usuarios] = await connection.execute(
@@ -70,7 +68,6 @@ exports.handler = async (event) => {
         
         await connection.end();
         
-        // 5. RESPUESTA PARA DIALOGFLOW
         return {
             statusCode: 200,
             body: JSON.stringify({
@@ -84,8 +81,7 @@ exports.handler = async (event) => {
         return {
             statusCode: 500,
             body: JSON.stringify({
-                fulfillmentText: "❌ Error conectando con la base de datos",
-                source: "webhook"
+                fulfillmentText: "❌ Error: " + error.message
             })
         };
     }
