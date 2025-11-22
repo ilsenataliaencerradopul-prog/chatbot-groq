@@ -7,147 +7,111 @@ exports.handler = async (event) => {
     
     const GEMINI_API_KEY = "AIzaSyDrp1tk0Rp3z-pHUxzM1KSujalywZIItPA";
 
-    // CONFIGURACIÓN DE LA BASE DE DATOS REAL
+    // TUS CREDENCIALES REALES DE PROFREEHOST
     const dbConfig = {
-      host: process.env.DB_HOST || "sql107.ezyro.com",
-      user: process.env.DB_USER || "ezyro_39974526",
-      password: process.env.DB_PASS || "0d398958b",
-      database: process.env.DB_NAME || "ezyro_39974526_usuarios",
-      port: process.env.DB_PORT || 3306
+      host: "sql107.ezyro.com",
+      user: "ezyro_39974526", 
+      password: "0d398958b",
+      database: "ezyro_39974526_usuarios",
+      port: 3306,
+      connectTimeout: 10000,
+      acquireTimeout: 10000,
+      timeout: 10000
     };
 
     let dbInfo = {};
     let connection;
 
     try {
-      // CONECTAR A LA BASE DE DATOS REAL
+      console.log("🔗 Conectando a la base de datos...");
       connection = await mysql.createConnection(dbConfig);
-      
-      // DETECTAR QUÉ CONSULTAR Y EJECUTAR SQL REAL
+      console.log("✅ Conexión exitosa a la BD");
+
+      // CONSULTAS REALES A TU BASE DE DATOS
       if (userMessage.includes('usuario') || userMessage.includes('user') || userMessage.includes('registrado')) {
+        console.log("📊 Consultando usuarios...");
+        
+        // Consulta REAL de usuarios
         const [users] = await connection.execute('SELECT COUNT(*) as total FROM usuarios');
         const [activeUsers] = await connection.execute('SELECT COUNT(*) as activos FROM usuarios WHERE estado = "Activo"');
-        const [lastUser] = await connection.execute('SELECT fecha_registro FROM usuarios ORDER BY id DESC LIMIT 1');
+        const [lastUser] = await connection.execute('SELECT nombre, fecha_registro FROM usuarios ORDER BY id DESC LIMIT 1');
         
         dbInfo = {
           tipo: 'usuarios',
-          total: users[0].total,
-          activos: activeUsers[0].activos,
-          ultimo_registro: lastUser[0]?.fecha_registro
+          total_usuarios: users[0].total,
+          usuarios_activos: activeUsers[0].activos,
+          ultimo_usuario: lastUser[0]?.nombre || 'No disponible',
+          ultimo_registro: lastUser[0]?.fecha_registro || 'No disponible',
+          mensaje: `✅ DATOS REALES: Hay ${users[0].total} usuarios registrados, ${activeUsers[0].activos} activos. Último registro: ${lastUser[0]?.nombre || 'N/A'}`
         };
+        
       } 
       else if (userMessage.includes('oferta') || userMessage.includes('empleo') || userMessage.includes('trabajo')) {
+        console.log("📊 Consultando ofertas...");
+        
         const [offers] = await connection.execute('SELECT COUNT(*) as total FROM ofertas');
         const [available] = await connection.execute('SELECT COUNT(*) as disponibles FROM ofertas WHERE estado = "Disponible"');
-        const [titles] = await connection.execute('SELECT titulo FROM ofertas LIMIT 5');
+        const [titles] = await connection.execute('SELECT titulo FROM ofertas LIMIT 3');
         
         dbInfo = {
           tipo: 'ofertas',
-          total: offers[0].total,
-          disponibles: available[0].disponibles,
-          puestos: titles.map(t => t.titulo)
+          total_ofertas: offers[0].total,
+          ofertas_disponibles: available[0].disponibles,
+          algunos_puestos: titles.map(t => t.titulo),
+          mensaje: `✅ DATOS REALES: ${offers[0].total} ofertas de trabajo, ${available[0].disponibles} disponibles`
         };
       }
       else if (userMessage.includes('postulación') || userMessage.includes('aplicación')) {
+        console.log("📊 Consultando postulaciones...");
+        
         const [applications] = await connection.execute('SELECT COUNT(*) as total FROM postulaciones');
-        const [popular] = await connection.execute(`
-          SELECT o.titulo, COUNT(p.id) as postulaciones 
-          FROM postulaciones p 
-          JOIN ofertas o ON p.id_oferta = o.id 
-          GROUP BY o.id 
-          ORDER BY postulaciones DESC 
-          LIMIT 1
-        `);
         
         dbInfo = {
           tipo: 'postulaciones',
-          total: applications[0].total,
-          oferta_mas_popular: popular[0] ? `${popular[0].titulo} (${popular[0].postulaciones} postulaciones)` : 'No hay datos'
+          total_postulaciones: applications[0].total,
+          mensaje: `✅ DATOS REALES: ${applications[0].total} postulaciones realizadas`
         };
       }
-      else if (userMessage.includes('administrador') || userMessage.includes('admin')) {
-        const [admins] = await connection.execute('SELECT COUNT(*) as total FROM administradores');
-        const [adminNames] = await connection.execute('SELECT nombre FROM administradores LIMIT 3');
-        
-        dbInfo = {
-          tipo: 'administradores',
-          total: admins[0].total,
-          nombres: adminNames.map(a => a.nombre)
-        };
-      }
-      else if (userMessage.includes('estadística') || userMessage.includes('resumen')) {
+      else {
+        // Consulta general
         const [users] = await connection.execute('SELECT COUNT(*) as total FROM usuarios');
         const [offers] = await connection.execute('SELECT COUNT(*) as total FROM ofertas');
         const [applications] = await connection.execute('SELECT COUNT(*) as total FROM postulaciones');
-        const [admins] = await connection.execute('SELECT COUNT(*) as total FROM administradores');
         
         dbInfo = {
-          tipo: 'resumen_general',
+          tipo: 'resumen',
           total_usuarios: users[0].total,
           total_ofertas: offers[0].total,
           total_postulaciones: applications[0].total,
-          total_administradores: admins[0].total
+          mensaje: `📊 RESUMEN REAL: ${users[0].total} usuarios, ${offers[0].total} ofertas, ${applications[0].total} postulaciones`
         };
       }
 
       await connection.end();
+      console.log("✅ Consulta completada");
 
     } catch (dbError) {
-      console.error("Error DB:", dbError);
-      dbInfo = { error: "Error conectando a la base de datos" };
+      console.error("❌ Error de base de datos:", dbError);
+      dbInfo = { 
+        error: true,
+        mensaje: "❌ No pude conectar con la base de datos. Error: " + dbError.message
+      };
     }
 
-    // USAR GEMINI CON LA INFORMACIÓN REAL DE LA DB
-    let prompt = `El usuario preguntó: "${userMessage}".`;
-    
-    if (Object.keys(dbInfo).length > 0 && !dbInfo.error) {
-      prompt += `\n\nINFORMACIÓN REAL DE LA BASE DE DATOS:\n${JSON.stringify(dbInfo, null, 2)}\n\nResponde como asistente de recursos humanos usando esta información.`;
-    } else if (dbInfo.error) {
-      prompt += `\n\nNo pude acceder a la base de datos. Responde como asistente general de recursos humanos.`;
-    } else {
-      prompt += ` Responde como asistente de recursos humanos.`;
-    }
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }]
-      })
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-        const botReply = data.candidates[0].content.parts[0].text;
-        return {
-          statusCode: 200,
-          body: JSON.stringify({ fulfillmentText: botReply })
-        };
-      }
-    }
-
-    // RESPUESTA POR DEFECTO
-    const defaultReply = Object.keys(dbInfo).length > 0 && !dbInfo.error
-      ? `Según nuestros registros: ${JSON.stringify(dbInfo)}. ¿En qué más puedo ayudarte?`
-      : `¡Hola! Soy tu asistente del sistema de bolsa de trabajo. ¿En qué puedo ayudarte?`;
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ fulfillmentText: defaultReply })
-    };
-    
-  } catch (error) {
+    // ENVIAR RESPUESTA
     return {
       statusCode: 200,
       body: JSON.stringify({ 
-        fulfillmentText: `¡Hola! Soy tu asistente. Hubo un error: ${error.message}` 
+        fulfillmentText: dbInfo.mensaje || `Información: ${JSON.stringify(dbInfo)}` 
+      })
+    };
+    
+  } catch (error) {
+    console.error("❌ Error general:", error);
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ 
+        fulfillmentText: "❌ Error en el servidor: " + error.message 
       })
     };
   }
